@@ -27,14 +27,7 @@ Confirm if this storage class supports the ReadWriteMany access mode from your c
 
 # Obtaining Manifests
 
-Self-hosted Plato deployments use a set of manifests.
-Contact your Plato representative to get a copy of the manifests.
-Open the kubernetes directory in an IDE to follow the steps below.
-
-```
-unzip plato-k8s-manifests.zip
-cd plato-k8s-manifests
-```
+Self-hosted Plato deployments use a set of [manifests](./manifests).
 
 # Version Configuration (Optional)
 

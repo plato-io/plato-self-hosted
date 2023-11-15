@@ -1,0 +1,48 @@
+version: "3"
+services:
+    plato:
+        image: "${PLATO_IMAGE}"
+        ports:
+            - "${PLATO_PORT}:80"
+        healthcheck:
+            test: curl -f http://localhost/
+            interval: 1s
+            timeout: 60s
+            retries: 30
+        depends_on:
+            plato-db:
+                condition: service_healthy
+        environment:
+            DATABASE_URL: "postgresql://${PLATO_DB_USER}:${PLATO_DB_PASS}@plato-db:5432/${PLATO_DB_NAME}?statement_cache_size=0&connect_timeout=300"
+            DB_CREDS_ENC_KEY: "51a70fedf1ea60771e0fdecafc0ffee17c0dedfaceb00caced90091ef1ed2bed"
+            DATADOG_CLIENT_TOKEN: "pub48d3bf7c6bf6b790b4eef6bfc268ad86"
+            PLATO_PUBLIC_KEY: "${PLATO_PUBLIC_KEY}"
+            PLATO_LICENSE_KEY: "${PLATO_LICENSE_KEY}"
+            OAUTH_PROVIDER_URL: "${OAUTH_PROVIDER_URL:-https://app.plato.io}"
+
+    plato-db:
+        image: postgres:13-alpine
+        entrypoint:
+            - bash
+            - -c
+            - |
+                echo "CREATE ROLE plato_api;" > \
+                    /docker-entrypoint-initdb.d/create_plato_role.sql
+                exec docker-entrypoint.sh \
+                    --listen_addresses='*' \
+                    --log_destination='stderr' \
+                    --log_statement='none'
+        healthcheck:
+            test: pg_isready -d ${PLATO_DB_NAME} -U ${PLATO_DB_USER}
+            interval: 1s
+            timeout: 30s
+            retries: 10
+        volumes:
+            - "plato-db:/var/lib/postgresql/data"
+        environment:
+            POSTGRES_DB: ${PLATO_DB_NAME}
+            POSTGRES_USER: ${PLATO_DB_USER}
+            POSTGRES_PASSWORD: ${PLATO_DB_PASS}
+
+volumes:
+    plato-db:

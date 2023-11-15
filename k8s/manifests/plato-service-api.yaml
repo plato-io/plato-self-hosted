@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: api
+  name: api
+  namespace: plato
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - command:
+          - bash
+          - -c
+          - |
+            export DATABASE_URL="postgresql://plato:${POSTGRES_PASSWORD}@postgres:5432/plato?statement_cache_size=0&connect_timeout=300"
+            npx prisma migrate deploy && node app-*.js
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: postgres_password
+
+        - name: DB_CREDS_ENC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: db_creds_enc_key
+
+        - name: PLATO_LICENSE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: secrets
+              key: license_key
+
+        - name: DATADOG_CLIENT_TOKEN
+          value: pub48d3bf7c6bf6b790b4eef6bfc268ad86
+
+        - name: PLATO_PUBLIC_KEY
+          value: 302a300506032b65700321005ca899f3522bf149f68a47e44f67cdbfb566af6c4add62992b9689d5ad796673
+
+        - name: OAUTH_PROVIDER_URL
+          value: https://app.plato.io
+
+        image: us-west2-docker.pkg.dev/rover-prod-9acae/on-prem/plato:latest
+        name: api
+        ports:
+        - containerPort: 80
+
+        readinessProbe:
+          exec:
+            command:
+            - curl
+            - -I
+            - http://localhost/
+          initialDelaySeconds: 5
+          periodSeconds: 5
+
+        resources:
+          limits:
+            memory: 4096M
+          requests:
+            cpu: "1"
+            memory: 2048M
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: api
+  name: api
+  namespace: plato
+spec:
+  type: LoadBalancer
+  ports:
+  - name: "80"
+    port: 80
+    targetPort: 80
+  selector:
+    app: api
